@@ -1,0 +1,45 @@
+{
+    "actorSpecification": 1,
+    "fields": {},
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": [
+                    "video.cover",
+                    "title",
+                    "views",
+                    "likes",
+                    "shares",
+                    "bookmarks",
+                    "comments",
+                    "metrics.engagementRate",
+                    "metrics.viralRatio",
+                    "channel.username",
+                    "channel.followers",
+                    "uploadedAtFormatted",
+                    "postPage"
+                ],
+                "flatten": ["video", "metrics", "channel"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "video.cover": { "label": "Cover", "format": "image" },
+                    "title": { "label": "Caption", "format": "text" },
+                    "views": { "label": "Views", "format": "number" },
+                    "likes": { "label": "Likes", "format": "number" },
+                    "shares": { "label": "Shares", "format": "number" },
+                    "bookmarks": { "label": "Saves", "format": "number" },
+                    "comments": { "label": "Comments", "format": "number" },
+                    "metrics.engagementRate": { "label": "Engagement %", "format": "number" },
+                    "metrics.viralRatio": { "label": "Views / followers", "format": "number" },
+                    "channel.username": { "label": "Creator", "format": "text" },
+                    "channel.followers": { "label": "Followers", "format": "number" },
+                    "uploadedAtFormatted": { "label": "Posted", "format": "date" },
+                    "postPage": { "label": "Link", "format": "link" }
+                }
+            }
+        }
+    }
+}

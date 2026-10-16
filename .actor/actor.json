@@ -1,0 +1,19 @@
+{
+    "actorSpecification": 1,
+    "name": "tiktok-search-insights",
+    "title": "TikTok Search Scraper + Insights: Keywords, Hashtags, Creators",
+    "description": "Scrape TikTok videos by keyword or hashtag and get a ready-made insights report: engagement, share and save rates, viral ratio, best posting hours, top hashtags, hooks and rising creators.",
+    "version": "1.0",
+    "buildTag": "latest",
+    "minMemoryMbytes": 2048,
+    "defaultMemoryMbytes": 4096,
+    "maxMemoryMbytes": 8192,
+    "meta": {
+        "templateId": "js-crawlee-playwright-chrome"
+    },
+    "input": "./input_schema.json",
+    "storages": {
+        "dataset": "./dataset_schema.json"
+    },
+    "dockerfile": "../Dockerfile"
+}

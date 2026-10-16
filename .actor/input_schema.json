@@ -1,0 +1,112 @@
+{
+    "title": "TikTok Search Scraper + Insights",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "keywords": {
+            "title": "Search keywords",
+            "type": "array",
+            "description": "Search terms, typed as in the TikTok search bar (e.g. <code>cytaty motywacyjne</code>). Each keyword is searched separately; all results land in one dataset.",
+            "editor": "stringList",
+            "prefill": ["cytaty motywacyjne"]
+        },
+        "hashtags": {
+            "title": "Hashtags",
+            "type": "array",
+            "description": "Hashtag feeds to scrape, with or without <code>#</code> (e.g. <code>motywacja</code>). Optional.",
+            "editor": "stringList"
+        },
+        "maxItems": {
+            "title": "Maximum videos in total",
+            "type": "integer",
+            "description": "Total cap across all keywords and hashtags.",
+            "default": 200,
+            "minimum": 1
+        },
+        "maxItemsPerQuery": {
+            "title": "Maximum videos per keyword / hashtag",
+            "type": "integer",
+            "description": "Cap for a single keyword or hashtag. TikTok usually stops serving search results somewhere between 200 and 500 per query.",
+            "default": 100,
+            "minimum": 1
+        },
+        "sortBy": {
+            "title": "Sort output by",
+            "type": "string",
+            "description": "Order of videos in the dataset (applied after scraping).",
+            "editor": "select",
+            "enum": ["RELEVANCE", "VIEWS", "LIKES", "SHARES", "ENGAGEMENT", "VIRAL_RATIO", "NEWEST"],
+            "enumTitles": ["Relevance (TikTok order)", "Most viewed", "Most liked", "Most shared", "Highest engagement rate", "Highest views-to-followers ratio", "Newest first"],
+            "default": "RELEVANCE"
+        },
+        "minViews": {
+            "title": "Minimum views",
+            "type": "integer",
+            "description": "Skip videos with fewer views.",
+            "minimum": 0,
+            "sectionCaption": "Filters"
+        },
+        "maxAgeDays": {
+            "title": "Only videos from the last N days",
+            "type": "integer",
+            "description": "Skip videos older than this. Leave empty for no limit.",
+            "minimum": 1
+        },
+        "maxFollowers": {
+            "title": "Maximum creator followers",
+            "type": "integer",
+            "description": "Keep only creators with at most this many followers. Useful to find small accounts that went viral.",
+            "minimum": 0
+        },
+        "uniqueAuthors": {
+            "title": "One video per creator",
+            "type": "boolean",
+            "description": "Keep only the first video of each creator, for creator discovery.",
+            "default": false
+        },
+        "generateReport": {
+            "title": "Generate insights report",
+            "type": "boolean",
+            "description": "Save an HTML report (<code>REPORT</code>) and a JSON summary (<code>SUMMARY</code>) to the key-value store: top hashtags, best posting hours and weekdays, duration sweet spot, voice-over vs music, top hooks and small creators that went viral.",
+            "default": true,
+            "sectionCaption": "Insights"
+        },
+        "timezone": {
+            "title": "Time zone for posting-time analysis",
+            "type": "string",
+            "description": "IANA time zone used for hour and weekday stats (e.g. <code>Europe/Warsaw</code>).",
+            "default": "Europe/Warsaw"
+        },
+        "reportLanguage": {
+            "title": "Report language",
+            "type": "string",
+            "editor": "select",
+            "enum": ["pl", "en"],
+            "enumTitles": ["Polski", "English"],
+            "default": "pl"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy",
+            "type": "object",
+            "description": "TikTok blocks datacenter IPs quickly. Residential proxy is strongly recommended; choose the country your audience is in.",
+            "editor": "proxy",
+            "prefill": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"], "apifyProxyCountry": "PL" },
+            "default": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"] },
+            "sectionCaption": "Advanced"
+        },
+        "sessionCookie": {
+            "title": "TikTok sessionid cookie (optional)",
+            "type": "string",
+            "description": "Only if TikTok shows a login wall for search. Value of the <code>sessionid</code> cookie from a logged-in browser. Use a secondary account: scraping can get the account restricted.",
+            "isSecret": true
+        },
+        "maxScrolls": {
+            "title": "Maximum scrolls per page",
+            "type": "integer",
+            "description": "How many times to scroll a results page to load more videos.",
+            "default": 40,
+            "minimum": 1
+        }
+    },
+    "required": []
+}
