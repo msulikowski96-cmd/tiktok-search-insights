@@ -8,7 +8,9 @@
             "type": "array",
             "description": "Search terms, typed as in the TikTok search bar (e.g. <code>cytaty motywacyjne</code>). Each keyword is searched separately; all results land in one dataset.",
             "editor": "stringList",
-            "prefill": ["cytaty motywacyjne"]
+            "prefill": [
+                "cytaty motywacyjne"
+            ]
         },
         "hashtags": {
             "title": "Hashtags",
@@ -35,8 +37,24 @@
             "type": "string",
             "description": "Order of videos in the dataset (applied after scraping).",
             "editor": "select",
-            "enum": ["RELEVANCE", "VIEWS", "LIKES", "SHARES", "ENGAGEMENT", "VIRAL_RATIO", "NEWEST"],
-            "enumTitles": ["Relevance (TikTok order)", "Most viewed", "Most liked", "Most shared", "Highest engagement rate", "Highest views-to-followers ratio", "Newest first"],
+            "enum": [
+                "RELEVANCE",
+                "VIEWS",
+                "LIKES",
+                "SHARES",
+                "ENGAGEMENT",
+                "VIRAL_RATIO",
+                "NEWEST"
+            ],
+            "enumTitles": [
+                "Relevance (TikTok order)",
+                "Most viewed",
+                "Most liked",
+                "Most shared",
+                "Highest engagement rate",
+                "Highest views-to-followers ratio",
+                "Newest first"
+            ],
             "default": "RELEVANCE"
         },
         "minViews": {
@@ -75,30 +93,50 @@
             "title": "Time zone for posting-time analysis",
             "type": "string",
             "description": "IANA time zone used for hour and weekday stats (e.g. <code>Europe/Warsaw</code>).",
-            "default": "Europe/Warsaw"
+            "default": "Europe/Warsaw",
+            "editor": "textfield"
         },
         "reportLanguage": {
             "title": "Report language",
             "type": "string",
             "editor": "select",
-            "enum": ["pl", "en"],
-            "enumTitles": ["Polski", "English"],
-            "default": "pl"
+            "enum": [
+                "pl",
+                "en"
+            ],
+            "enumTitles": [
+                "Polski",
+                "English"
+            ],
+            "default": "pl",
+            "description": "Language of the HTML report and the takeaways."
         },
         "proxyConfiguration": {
             "title": "Proxy",
             "type": "object",
             "description": "TikTok blocks datacenter IPs quickly. Residential proxy is strongly recommended; choose the country your audience is in.",
             "editor": "proxy",
-            "prefill": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"], "apifyProxyCountry": "PL" },
-            "default": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"] },
+            "prefill": {
+                "useApifyProxy": true,
+                "apifyProxyGroups": [
+                    "RESIDENTIAL"
+                ],
+                "apifyProxyCountry": "PL"
+            },
+            "default": {
+                "useApifyProxy": true,
+                "apifyProxyGroups": [
+                    "RESIDENTIAL"
+                ]
+            },
             "sectionCaption": "Advanced"
         },
         "sessionCookie": {
             "title": "TikTok sessionid cookie (optional)",
             "type": "string",
             "description": "Only if TikTok shows a login wall for search. Value of the <code>sessionid</code> cookie from a logged-in browser. Use a secondary account: scraping can get the account restricted.",
-            "isSecret": true
+            "isSecret": true,
+            "editor": "textfield"
         },
         "maxScrolls": {
             "title": "Maximum scrolls per page",
