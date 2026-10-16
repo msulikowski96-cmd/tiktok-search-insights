@@ -50,6 +50,8 @@ Actor.on('persistState', () => {
 
 // Captured API responses per page (kept outside userData: it must stay small and serializable).
 const pendingByRequest = new Map();
+// Every TikTok /api/ call per page, for diagnostics when nothing is found.
+const apiLogByRequest = new Map();
 
 const API_RE = /\/api\/(search\/(item|general|video)\/full|challenge\/item_list|post\/item_list|music\/item_list)/;
 
@@ -113,6 +115,34 @@ async function hasLoginWall(page) {
     }).catch(() => false);
 }
 
+/** Stores what the browser saw when a query returned nothing: screenshot, HTML and TikTok API calls. */
+async function saveDebug(page, request, flags) {
+    try {
+        const key = `DEBUG-${request.userData.query.replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 40)}-${request.retryCount}`
+            .normalize('NFD').replace(/[^\x00-\x7F]/g, '');
+        const info = {
+            query: request.userData.query,
+            requestedUrl: request.url,
+            finalUrl: page.url(),
+            title: await page.title().catch(() => null),
+            ...flags,
+            bodyText: (await page.evaluate(() => document.body?.innerText ?? '').catch(() => '')).slice(0, 3000),
+            apiCalls: apiLogByRequest.get(request.uniqueKey) ?? [],
+        };
+        await Actor.setValue(`${key}-info`, info);
+        const html = await page.content().catch(() => '');
+        await Actor.setValue(`${key}-html`, html.slice(0, 500_000), { contentType: 'text/html; charset=utf-8' });
+        const png = await page.screenshot({ fullPage: false }).catch(() => null);
+        if (png) await Actor.setValue(`${key}-screenshot`, png, { contentType: 'image/png' });
+        log.warning(`Debug saved for ${request.userData.query}: ${key}-info / -html / -screenshot in the key-value store. `
+            + `Final URL: ${info.finalUrl}, title: ${info.title}, TikTok API calls: ${info.apiCalls.length}, `
+            + `captcha: ${flags.blocked}, login wall: ${flags.loginWall}`);
+        if (info.apiCalls.length) log.info(`API calls: ${info.apiCalls.slice(0, 25).join(' | ')}`);
+    } catch (err) {
+        log.warning(`Could not save debug info: ${err.message}`);
+    }
+}
+
 const startUrls = [
     ...keywordList.map((k) => ({
         url: `https://www.tiktok.com/search/video?q=${encodeURIComponent(k)}`,
@@ -149,7 +179,9 @@ const crawler = new PlaywrightCrawler({
         async ({ page, request }, gotoOptions) => {
             gotoOptions.waitUntil = 'domcontentloaded';
             const pending = [];
+            const apiLog = [];
             pendingByRequest.set(request.uniqueKey, pending);
+            apiLogByRequest.set(request.uniqueKey, apiLog);
             if (sessionCookie) {
                 await page.context().addCookies([{
                     name: 'sessionid', value: sessionCookie, domain: '.tiktok.com', path: '/', httpOnly: true, secure: true,
@@ -157,6 +189,9 @@ const crawler = new PlaywrightCrawler({
             }
             page.on('response', async (response) => {
                 const url = response.url();
+                if (/tiktok\.com\/api\//.test(url) && apiLog.length < 200) {
+                    apiLog.push(`${response.status()} ${url.split('?')[0]}`);
+                }
                 if (!API_RE.test(url) || response.status() !== 200) return;
                 try {
                     const body = await response.json();
@@ -172,16 +207,6 @@ const crawler = new PlaywrightCrawler({
         const label = request.userData.query;
         log.info(`Opening ${label}`);
 
-        await page.waitForTimeout(4000);
-        await dismissPopups(page);
-
-        // Items embedded in the first HTML render.
-        const ssr = await page.evaluate(() => {
-            const el = document.querySelector('#__UNIVERSAL_DATA_FOR_REHYDRATION__, #SIGI_STATE');
-            try { return el ? JSON.parse(el.textContent) : null; } catch { return null; }
-        }).catch(() => null);
-        if (ssr) await accept(extractItems(ssr), request);
-
         const drain = async () => {
             const batch = (pendingByRequest.get(request.uniqueKey) ?? []).splice(0);
             let added = 0;
@@ -189,28 +214,66 @@ const crawler = new PlaywrightCrawler({
             return { added, responses: batch.length };
         };
 
-        let idle = 0;
-        let sawAnyResponse = false;
-        for (let i = 0; i < maxScrolls; i++) {
-            const { added, responses } = await drain();
-            if (responses) sawAnyResponse = true;
-            if (totalReached() || request.userData.found >= maxItemsPerQuery) break;
-            idle = responses === 0 && added === 0 ? idle + 1 : 0;
-            if (idle >= 5) break;
-            await page.mouse.wheel(0, 2500 + Math.round(Math.random() * 1500));
-            await page.waitForTimeout(1500 + Math.round(Math.random() * 1500));
-            if (i % 5 === 4) await dismissPopups(page);
+        // Wait until the first search response arrives (up to ~20 s) instead of a fixed sleep.
+        const waitForFirstResponse = async () => {
+            for (let t = 0; t < 20; t++) {
+                if ((pendingByRequest.get(request.uniqueKey) ?? []).length) return true;
+                if (t === 3 || t === 10) await dismissPopups(page);
+                await page.waitForTimeout(1000);
+            }
+            return false;
+        };
+
+        const scrollAndCollect = async () => {
+            let idle = 0;
+            let sawAnyResponse = false;
+            for (let i = 0; i < maxScrolls; i++) {
+                const { added, responses } = await drain();
+                if (responses) sawAnyResponse = true;
+                if (totalReached() || request.userData.found >= maxItemsPerQuery) break;
+                idle = responses === 0 && added === 0 ? idle + 1 : 0;
+                if (idle >= 5) break;
+                await page.mouse.wheel(0, 2500 + Math.round(Math.random() * 1500));
+                await page.waitForTimeout(1500 + Math.round(Math.random() * 1500));
+                if (i % 5 === 4) await dismissPopups(page);
+            }
+            const last = await drain();
+            return sawAnyResponse || last.responses > 0;
+        };
+
+        const collectSsr = async () => {
+            const ssr = await page.evaluate(() => {
+                const el = document.querySelector('#__UNIVERSAL_DATA_FOR_REHYDRATION__, #SIGI_STATE');
+                try { return el ? JSON.parse(el.textContent) : null; } catch { return null; }
+            }).catch(() => null);
+            if (ssr) await accept(extractItems(ssr), request);
+        };
+
+        await waitForFirstResponse();
+        await collectSsr();
+        let sawAnyResponse = await scrollAndCollect();
+
+        // Fallback: the "Top" search tab sometimes works when the "Videos" tab does not.
+        if ((request.userData.found ?? 0) === 0 && request.userData.source === 'keyword' && !(await isBlocked(page))) {
+            const generalUrl = `https://www.tiktok.com/search?q=${encodeURIComponent(label)}`;
+            log.info(`${label}: nothing on the Videos tab, trying ${generalUrl}`);
+            await page.goto(generalUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => {});
+            await waitForFirstResponse();
+            await collectSsr();
+            sawAnyResponse = (await scrollAndCollect()) || sawAnyResponse;
         }
-        await drain();
         pendingByRequest.delete(request.uniqueKey);
 
         const found = request.userData.found ?? 0;
         if (found === 0) {
-            if (await isBlocked(page)) {
+            const blocked = await isBlocked(page);
+            const loginWall = await hasLoginWall(page);
+            await saveDebug(page, request, { blocked, loginWall, sawAnyResponse });
+            if (blocked) {
                 session?.retire();
                 throw new Error(`CAPTCHA on ${label} — retrying with a new session/IP.`);
             }
-            if (await hasLoginWall(page)) {
+            if (loginWall) {
                 log.warning(`TikTok shows a login wall for ${label}. Add the "sessionid" cookie in the input to search while logged in.`);
             }
             if (!sawAnyResponse) {
@@ -218,6 +281,7 @@ const crawler = new PlaywrightCrawler({
                 throw new Error(`No search data loaded for ${label} — retrying.`);
             }
         }
+        apiLogByRequest.delete(request.uniqueKey);
         log.info(`${label}: ${found} videos (total ${state.count}/${maxItems})`);
     },
     failedRequestHandler({ request }, error) {
