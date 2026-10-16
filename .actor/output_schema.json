@@ -1,0 +1,26 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "TikTok Search Scraper + Insights output",
+    "description": "Scraped TikTok videos with engagement metrics in the dataset, plus an HTML insights report and a JSON summary in the key-value store.",
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "string",
+            "title": "Videos",
+            "description": "One item per TikTok video: stats, caption, hashtags, creator, video, sound and derived metrics (engagement, share, save and viral ratio, posting hour and weekday, hook).",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?view=overview"
+        },
+        "report": {
+            "type": "string",
+            "title": "Insights report (HTML)",
+            "description": "Best posting hours and weekdays, video length sweet spot, voice-over vs music, hashtag performance, best hooks, small creators that went viral and plain-language takeaways.",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/REPORT"
+        },
+        "summary": {
+            "type": "string",
+            "title": "Insights summary (JSON)",
+            "description": "The same insights as the HTML report in machine-readable JSON, for dashboards and AI agents.",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY"
+        }
+    }
+}
